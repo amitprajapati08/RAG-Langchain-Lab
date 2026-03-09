@@ -1,0 +1,135 @@
+Retrieval Augmented Generation (RAG)
+
+What is RAG?
+
+Retrieval Augmented Generation (RAG) is a natural language processing architecture that enhances
+large language models (LLMs) by combining them with an external knowledge retrieval system.
+Instead of relying solely on knowledge encoded in model weights during training, a RAG system
+retrieves relevant documents from an external corpus at inference time and feeds them as
+additional context to the language model. This allows the LLM to generate answers that are
+grounded in up-to-date, domain-specific information rather than purely memorized facts.
+
+RAG was introduced by Lewis et al. (2020) in the paper "Retrieval-Augmented Generation for
+Knowledge-Intensive NLP Tasks" and has since become a foundational pattern for building
+production-grade AI assistants, question-answering systems, and enterprise search tools.
+
+Key Components of a RAG Pipeline
+
+1. Document Ingestion
+The pipeline begins with ingesting raw documents from various sources such as PDFs, Word
+documents, plain text files, Markdown files, HTML pages, or databases. Loaders parse each
+format and extract the raw text content along with metadata such as source file paths,
+page numbers, and creation timestamps.
+
+2. Text Chunking
+Because LLMs have finite context windows, large documents must be split into smaller,
+manageable chunks before embedding. Common strategies include fixed-size splitting with
+overlap, sentence-aware splitting, and recursive character-based splitting. Overlap between
+consecutive chunks ensures that semantic context at chunk boundaries is preserved.
+
+3. Embedding Generation
+Each text chunk is passed through an embedding model that converts it into a dense vector
+representation in a high-dimensional space. Semantically similar passages are mapped to
+nearby points in this space. Popular embedding models include OpenAI's text-embedding-ada-002,
+sentence-transformers models such as all-MiniLM-L6-v2, and Cohere's embedding API.
+
+4. Vector Storage
+The generated embeddings are stored in a vector database (also called a vector store or
+index) that supports efficient approximate nearest-neighbour (ANN) search. The vector store
+maps each embedding back to its original text chunk and metadata, enabling fast lookup during
+retrieval.
+
+5. Query-Time Retrieval
+When a user submits a query, the same embedding model encodes the query into a vector. The
+vector store is then searched for the top-k chunks whose embeddings are most similar to the
+query vector (using cosine similarity, dot-product, or Euclidean distance). These retrieved
+chunks form the "context" window provided to the LLM.
+
+6. Response Generation
+The retrieved context chunks are concatenated with the user's question inside a carefully
+engineered prompt template and sent to the LLM. The model generates a response that is
+explicitly grounded in the provided context. A well-designed prompt instructs the model to
+cite its sources and to acknowledge when it lacks sufficient information rather than
+hallucinating an answer.
+
+Benefits of RAG
+
+Reduces Hallucination
+One of the most significant challenges with standalone LLMs is hallucination—confidently
+generating plausible but factually incorrect information. By anchoring responses in retrieved
+evidence, RAG dramatically reduces hallucination. If the answer is not present in the
+retrieved documents, a properly prompted RAG system will say so rather than fabricate one.
+
+Real-Time Knowledge Updates
+LLMs have a knowledge cut-off date determined by their training data. RAG decouples knowledge
+from model weights, allowing operators to update the knowledge base (e.g., add new documents,
+retire outdated ones) without expensive model retraining or fine-tuning.
+
+Source Attribution and Transparency
+Because RAG tracks which documents were retrieved to generate a response, it can surface
+citations alongside answers. This transparency builds user trust and makes it easier to
+verify or audit system outputs—a critical requirement in regulated industries such as
+finance, healthcare, and legal services.
+
+Cost-Effectiveness
+Fine-tuning a large language model on proprietary data is expensive in terms of compute,
+time, and engineering effort. RAG provides a cheaper alternative: index the proprietary
+knowledge once, then reuse the same general-purpose LLM for many different domains simply
+by swapping the vector store.
+
+Domain Adaptability
+A single RAG system can serve multiple domains simultaneously. By maintaining separate
+vector stores (or separate namespaces within one store) for different document collections,
+the same LLM can answer questions about legal contracts, product documentation, scientific
+literature, or customer support tickets without any architectural change.
+
+Common Vector Databases
+
+FAISS (Facebook AI Similarity Search)
+FAISS is an open-source library developed by Meta AI Research for efficient similarity search
+and clustering of dense vectors. It runs in-process (no separate server required), supports
+both CPU and GPU execution, and scales to billions of vectors. FAISS is ideal for local
+development, research prototypes, and deployments where simplicity is preferred over
+distributed scalability.
+
+Chroma
+Chroma is an open-source, AI-native vector database designed for ease of use with Python-first
+APIs. It supports both in-memory and persistent (disk-backed) modes and integrates natively
+with LangChain, LlamaIndex, and other LLM frameworks. Chroma is well-suited for small-to-
+medium workloads and rapid prototyping.
+
+Pinecone
+Pinecone is a fully managed, cloud-native vector database that provides horizontal scalability,
+real-time indexing, and enterprise features such as role-based access control, metadata
+filtering, and hybrid search (combining dense vector search with sparse BM25 retrieval).
+Pinecone is commonly chosen for production deployments requiring high availability and
+large-scale data volumes.
+
+Weaviate
+Weaviate is an open-source vector database with a GraphQL API, built-in support for
+multi-modal data (text, images), and a modular architecture that allows different vectorisation
+modules (e.g., OpenAI, Cohere, HuggingFace) to be plugged in. It supports hybrid search
+(BM25 + vector) natively and can be self-hosted or used as a managed cloud service.
+
+Practical Considerations
+
+Chunking Strategy
+Choosing the right chunk size involves a trade-off: smaller chunks improve retrieval
+precision but may lose surrounding context, while larger chunks retain more context but
+risk diluting the relevance signal. A chunk size of 500–1000 characters with 10–20%
+overlap is a common starting point.
+
+Retrieval Quality
+Top-k retrieval can be improved with techniques such as:
+- Maximum Marginal Relevance (MMR): selects diverse results to avoid redundancy.
+- Hybrid search: combines dense (semantic) and sparse (keyword) retrieval.
+- Re-ranking: applies a cross-encoder model to re-score retrieved chunks.
+- HyDE (Hypothetical Document Embeddings): embeds a hypothetical answer rather than
+  the raw question to improve semantic alignment.
+
+Evaluation
+RAG pipelines should be evaluated holistically using metrics such as:
+- Faithfulness: are answers grounded in the retrieved context?
+- Answer relevance: does the answer address the question?
+- Context precision/recall: are the right documents being retrieved?
+Frameworks like RAGAS and TruLens provide automated evaluation pipelines for these metrics.
